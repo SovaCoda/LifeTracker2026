@@ -1,78 +1,115 @@
-// Game state model + localStorage persistence.
-// The data shape here is the single source of truth the whole UI renders from.
+// Data model + localStorage persistence. Three stores:
+//   - session : the in-progress flow (phase + current game) so a reload resumes
+//   - profiles: the roster of friends (decks + win-rate will attach here later)
+//   - games   : completed game results (for the future win-rate feature)
 
-var STORAGE_KEY = 'lifetracker.game.v1';
-
-// Commander only: everyone starts at 40.
 export var STARTING_LIFE = 40;
 export var POISON_LETHAL = 10;
 export var CMDR_LETHAL = 21;
 
-// Default seat colours, reused across player counts.
-var PLAYER_COLORS = ['#9d2233', '#1e4fa3', '#176c3a', '#9a6311', '#5b2a8c', '#0f6f7a'];
+// Seat colours offered when choosing who's playing (one per player, up to 6).
+export var PLAYER_COLORS = ['#9d2233', '#1e4fa3', '#176c3a', '#9a6311', '#5b2a8c', '#0f6f7a'];
 
-function colorFor(id) {
-  return PLAYER_COLORS[(id - 1) % PLAYER_COLORS.length];
+// ---- ordinals: 1 -> "1st", 4 -> "4th" ----
+export function ordinal(n) {
+  var s = ['th', 'st', 'nd', 'rd'];
+  var v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
-function newPlayer(id) {
-  return {
-    id: id,
-    name: 'Player ' + id,
-    life: STARTING_LIFE,
-    color: colorFor(id),
-    poison: 0,
-    energy: 0,
-    cmdrDmg: {} // { opponentId: damageTaken }
-  };
-}
-
-export function defaultPlayers(count) {
-  var players = [];
-  for (var i = 0; i < count; i++) {
-    players.push(newPlayer(i + 1));
+// ---- a player is dead by any commander rule ----
+export function isPlayerDead(p) {
+  if (p.life <= 0) return true;
+  if (p.poison >= POISON_LETHAL) return true;
+  for (var k in p.cmdrDmg) {
+    if (p.cmdrDmg[k] >= CMDR_LETHAL) return true;
   }
-  return players;
+  return false;
 }
 
-export function createGame(count) {
-  return { playerCount: count, players: defaultPlayers(count) };
-}
-
-// Fill in any fields a stored (older) player object might be missing.
-function normalizePlayer(p, index) {
-  var id = p && p.id ? p.id : index + 1;
+// ---- build the playing game from chosen seats ----
+// seats: [{ profileId, name, color }]
+export function createGameFromSeats(seats) {
   return {
-    id: id,
-    name: p && p.name ? p.name : 'Player ' + id,
-    life: p && typeof p.life === 'number' ? p.life : STARTING_LIFE,
-    color: p && p.color ? p.color : colorFor(id),
-    poison: p && p.poison ? p.poison : 0,
-    energy: p && p.energy ? p.energy : 0,
-    cmdrDmg: p && p.cmdrDmg ? p.cmdrDmg : {}
+    players: seats.map(function (s, i) {
+      return {
+        id: i + 1,
+        profileId: s.profileId,
+        name: s.name,
+        color: s.color,
+        life: STARTING_LIFE,
+        poison: 0,
+        energy: 0,
+        cmdrDmg: {}, // { opponentSeatId: damage }
+        place: null  // null = still in; otherwise final placement
+      };
+    })
   };
 }
 
-export function loadGame() {
+// ---- session (phase + current game) ----
+var SESSION_KEY = 'lifetracker.session.v1';
+
+export function loadSession() {
   try {
-    var raw = localStorage.getItem(STORAGE_KEY);
+    var raw = localStorage.getItem(SESSION_KEY);
     if (raw) {
-      var parsed = JSON.parse(raw);
-      if (parsed && parsed.players && parsed.players.length) {
-        var players = parsed.players.map(normalizePlayer);
-        return { playerCount: players.length, players: players };
-      }
+      var s = JSON.parse(raw);
+      if (s && s.phase) return s;
     }
-  } catch (e) {
-    /* corrupt or unavailable storage -> fresh game */
-  }
-  return createGame(4);
+  } catch (e) { /* ignore */ }
+  return { phase: 'setup-count', playerCount: 4, game: null };
 }
 
-export function saveGame(game) {
+export function saveSession(s) {
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch (e) { /* ignore */ }
+}
+
+// ---- profiles ----
+var PROFILES_KEY = 'lifetracker.profiles.v1';
+
+var DEFAULT_PROFILES = [
+  { id: 'anna', name: 'Anna', avatar: null, avatarColor: '#db2777' },
+  { id: 'conner', name: 'Conner', avatar: null, avatarColor: '#2563eb' },
+  { id: 'mark', name: 'Mark', avatar: null, avatarColor: '#16a34a' },
+  { id: 'houston', name: 'Houston', avatar: null, avatarColor: '#ea580c' },
+  { id: 'jake', name: 'Jake', avatar: null, avatarColor: '#7c3aed' },
+  { id: 'steve', name: 'Steve', avatar: null, avatarColor: '#0891b2' }
+];
+
+export function loadProfiles() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(game));
-  } catch (e) {
-    /* private mode / quota -> ignore */
-  }
+    var raw = localStorage.getItem(PROFILES_KEY);
+    if (raw) {
+      var p = JSON.parse(raw);
+      if (p && p.length) return p;
+    }
+  } catch (e) { /* ignore */ }
+  saveProfiles(DEFAULT_PROFILES);
+  return DEFAULT_PROFILES.slice();
+}
+
+export function saveProfiles(list) {
+  try { localStorage.setItem(PROFILES_KEY, JSON.stringify(list)); } catch (e) { /* ignore */ }
+}
+
+// ---- completed games (win-rate source, used later) ----
+var GAMES_KEY = 'lifetracker.games.v1';
+
+export function loadGames() {
+  try {
+    var raw = localStorage.getItem(GAMES_KEY);
+    if (raw) {
+      var g = JSON.parse(raw);
+      if (g && g.length) return g;
+    }
+  } catch (e) { /* ignore */ }
+  return [];
+}
+
+export function saveGameResult(result) {
+  var games = loadGames();
+  games.push(result);
+  try { localStorage.setItem(GAMES_KEY, JSON.stringify(games)); } catch (e) { /* ignore */ }
+  return games;
 }

@@ -1,15 +1,28 @@
-import { useState, useEffect, useCallback } from 'preact/hooks';
-import { loadGame, saveGame, defaultPlayers, STARTING_LIFE } from './state.js';
-import { LAYOUTS } from './layouts.js';
-import { PlayerTile } from './components/PlayerTile.jsx';
+import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
+import {
+  loadSession, saveSession, loadProfiles, saveGameResult,
+  createGameFromSeats, isPlayerDead, STARTING_LIFE
+} from './state.js';
+import { SetupCount } from './screens/SetupCount.jsx';
+import { SetupPlayers } from './screens/SetupPlayers.jsx';
+import { Summary } from './screens/Summary.jsx';
+import { Board } from './components/Board.jsx';
 
 export function App() {
-  var [game, setGame] = useState(loadGame);
-  var [menuOpen, setMenuOpen] = useState(false);
+  var initial = loadSession();
+  var [phase, setPhase] = useState(initial.phase);
+  var [playerCount, setPlayerCount] = useState(initial.playerCount || 4);
+  var [game, setGame] = useState(initial.game);
+  var [pendingDeath, setPendingDeath] = useState(null);
+  var [profiles] = useState(loadProfiles);
+  var dismissed = useRef({}); // seat ids whose death prompt was waved off (until they recover)
 
-  // persist on every change
-  useEffect(function () { saveGame(game); }, [game]);
+  // persist the whole flow so a reload resumes exactly where we were
+  useEffect(function () {
+    saveSession({ phase: phase, playerCount: playerCount, game: game });
+  }, [phase, playerCount, game]);
 
+  // ---- in-game life / counter edits ----
   var adjustLife = useCallback(function (id, amount) {
     setGame(function (g) {
       return Object.assign({}, g, {
@@ -20,30 +33,14 @@ export function App() {
     });
   }, []);
 
-  var rename = useCallback(function (id, name) {
-    setGame(function (g) {
-      return Object.assign({}, g, {
-        players: g.players.map(function (p) {
-          return p.id === id ? Object.assign({}, p, { name: name }) : p;
-        })
-      });
-    });
-  }, []);
-
-  // kind: 'poison' | 'energy' | 'cmdr'. For 'cmdr', oppId is the attacker.
   var adjustCounter = useCallback(function (id, kind, amount, oppId) {
     setGame(function (g) {
       return Object.assign({}, g, {
         players: g.players.map(function (p) {
           if (p.id !== id) return p;
-          if (kind === 'poison') {
-            return Object.assign({}, p, { poison: Math.max(0, p.poison + amount) });
-          }
-          if (kind === 'energy') {
-            return Object.assign({}, p, { energy: Math.max(0, p.energy + amount) });
-          }
-          // commander damage: clamp at 0, and mirror the real change onto life
-          // (commander damage IS combat damage, so it costs life too).
+          if (kind === 'poison') return Object.assign({}, p, { poison: Math.max(0, p.poison + amount) });
+          if (kind === 'energy') return Object.assign({}, p, { energy: Math.max(0, p.energy + amount) });
+          // commander damage is combat damage -> mirror the real change onto life
           var cur = p.cmdrDmg[oppId] || 0;
           var next = Math.max(0, cur + amount);
           var applied = next - cur;
@@ -55,95 +52,118 @@ export function App() {
     });
   }, []);
 
-  function setPlayerCount(count) {
-    setGame(function (g) {
-      // keep existing seats; add fresh ones for any new seats
-      var fresh = defaultPlayers(count);
-      var players = fresh.map(function (p, i) {
-        var existing = g.players[i];
-        return existing ? existing : p;
-      });
-      return Object.assign({}, g, { playerCount: count, players: players });
+  // ---- death detection: prompt once per player when they cross into lethal ----
+  useEffect(function () {
+    if (phase !== 'playing' || !game) return;
+    // forget dismissals for anyone who has recovered
+    game.players.forEach(function (p) {
+      if (dismissed.current[p.id] && !isPlayerDead(p)) delete dismissed.current[p.id];
     });
+    if (pendingDeath != null) return;
+    for (var i = 0; i < game.players.length; i++) {
+      var p = game.players[i];
+      if (p.place == null && !dismissed.current[p.id] && isPlayerDead(p)) {
+        setPendingDeath(p.id);
+        return;
+      }
+    }
+  }, [game, phase, pendingDeath]);
+
+  // ---- game over -> summary ----
+  useEffect(function () {
+    if (phase === 'playing' && game && game.players.length &&
+        game.players.every(function (p) { return p.place != null; })) {
+      setPhase('summary');
+    }
+  }, [game, phase]);
+
+  function confirmDeath() {
+    var id = pendingDeath;
+    setGame(function (g) {
+      var stillIn = g.players.filter(function (p) { return p.place == null; }).length;
+      var place = stillIn; // the player going out takes the lowest open place
+      var players = g.players.map(function (p) {
+        return p.id === id ? Object.assign({}, p, { place: place }) : p;
+      });
+      var remaining = players.filter(function (p) { return p.place == null; });
+      if (remaining.length === 1) {
+        players = players.map(function (p) {
+          return p.place == null ? Object.assign({}, p, { place: 1 }) : p;
+        });
+      }
+      return Object.assign({}, g, { players: players });
+    });
+    setPendingDeath(null);
   }
 
-  function resetGame() {
+  function dismissDeath() {
+    if (pendingDeath != null) dismissed.current[pendingDeath] = true;
+    setPendingDeath(null);
+  }
+
+  // ---- flow transitions ----
+  function pickCount(n) { setPlayerCount(n); setPhase('setup-players'); }
+  function startGame(seats) { setGame(createGameFromSeats(seats)); setPhase('playing'); }
+  function backToCount() { setPhase('setup-count'); }
+
+  function resetLife() {
     setGame(function (g) {
       return Object.assign({}, g, {
         players: g.players.map(function (p) {
           return Object.assign({}, p, {
-            life: STARTING_LIFE,
-            poison: 0,
-            energy: 0,
-            cmdrDmg: {}
+            life: STARTING_LIFE, poison: 0, energy: 0, cmdrDmg: {}, place: null
           });
         })
       });
     });
-    setMenuOpen(false);
+    dismissed.current = {};
+    setPendingDeath(null);
   }
 
-  var layout = LAYOUTS[game.playerCount];
-  var boardStyle = {
-    display: 'grid',
-    gridTemplateColumns: layout.columns,
-    gridTemplateRows: layout.rows,
-    gridTemplateAreas: layout.areas,
-    width: '100%',
-    height: '100%'
-  };
+  function abandonGame() {
+    setGame(null);
+    setPendingDeath(null);
+    dismissed.current = {};
+    setPhase('setup-count');
+  }
 
-  return (
-    <div class="board" style={boardStyle}>
-      {game.players.map(function (p, i) {
-        var area = 'p' + (i + 1);
-        var opponents = game.players
-          .filter(function (o) { return o.id !== p.id; })
-          .map(function (o) { return { id: o.id, name: o.name, color: o.color }; });
-        return (
-          <div class="seat" key={p.id} style={{ gridArea: area }}>
-            <PlayerTile
-              player={p}
-              opponents={opponents}
-              rotation={layout.rotations[area]}
-              onAdjust={adjustLife}
-              onRename={rename}
-              onCounter={adjustCounter}
-            />
-          </div>
-        );
-      })}
+  function finishGame(ordered) {
+    var result = {
+      date: new Date().toISOString(),
+      results: ordered.map(function (p, i) {
+        return { profileId: p.profileId, name: p.name, place: i + 1 };
+      })
+    };
+    saveGameResult(result);
+    setGame(null);
+    dismissed.current = {};
+    setPhase('setup-count');
+  }
 
-      <div class="center">
-        <button
-          class="center-btn"
-          aria-label="Menu"
-          onClick={function () { setMenuOpen(function (o) { return !o; }); }}
-        >
-          &#9776;
-        </button>
-
-        {menuOpen && (
-          <div class="menu">
-            <div class="menu-title">Players</div>
-            <div class="menu-row">
-              {[2, 3, 4, 5, 6].map(function (n) {
-                return (
-                  <button
-                    key={n}
-                    class={'pill' + (game.playerCount === n ? ' active' : '')}
-                    onClick={function () { setPlayerCount(n); }}
-                  >
-                    {n}
-                  </button>
-                );
-              })}
-            </div>
-
-            <button class="menu-item reset" onClick={resetGame}>Reset game</button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  // ---- render by phase ----
+  if (phase === 'setup-count') {
+    return <SetupCount onPick={pickCount} />;
+  }
+  if (phase === 'setup-players') {
+    return <SetupPlayers playerCount={playerCount} profiles={profiles} onBack={backToCount} onStart={startGame} />;
+  }
+  if (phase === 'summary' && game) {
+    return <Summary game={game} profiles={profiles} onFinish={finishGame} />;
+  }
+  if (game) {
+    return (
+      <Board
+        game={game}
+        onAdjust={adjustLife}
+        onCounter={adjustCounter}
+        onResetLife={resetLife}
+        onNewGame={abandonGame}
+        pendingDeath={pendingDeath}
+        onConfirmDeath={confirmDeath}
+        onDismissDeath={dismissDeath}
+      />
+    );
+  }
+  // fallback (e.g. corrupt session)
+  return <SetupCount onPick={pickCount} />;
 }

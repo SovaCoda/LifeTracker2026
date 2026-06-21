@@ -379,15 +379,290 @@ body {
   display: block;
   width: 100%;
   text-align: center;
-  padding: 11px 12px;
+  padding: 12px;
+  margin-bottom: 8px;
   border: none;
   border-radius: 8px;
   font-size: 15px;
   font-weight: 600;
   color: #fff;
+  background: #262626;
 }
 
-.menu-item.reset {
-  margin-top: 12px;
+.menu-item:last-child {
+  margin-bottom: 0;
+}
+
+.menu-item.danger {
   background: #7f1d1d;
+}
+
+/* ---- avatar ---- */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #fff;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ---- setup / summary screens ---- */
+.setup {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow: auto;
+}
+
+.setup-inner {
+  width: 100%;
+  max-width: 720px;
+  text-align: center;
+}
+
+.setup-title {
+  font-size: 30px;
+  font-weight: 800;
+  margin-bottom: 18px;
+}
+
+.subtitle {
+  opacity: 0.7;
+  font-size: 16px;
+  margin-bottom: 22px;
+}
+
+.count-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.count-btn {
+  width: 96px;
+  height: 96px;
+  margin: 8px;
+  border: none;
+  border-radius: 18px;
+  background: #1f2937;
+  color: #fff;
+  font-size: 40px;
+  font-weight: 800;
+}
+
+.count-btn:active {
+  background: #374151;
+}
+
+.color-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 22px;
+}
+
+.swatch-btn {
+  width: 46px;
+  height: 46px;
+  margin: 6px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+}
+
+.swatch-btn.active {
+  border-color: #fff;
+}
+
+.swatch-btn.used {
+  opacity: 0.25;
+}
+
+.profile-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.profile-cell {
+  width: 130px;
+  margin: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: none;
+  border: none;
+  color: #fff;
+}
+
+.profile-cell .pname {
+  margin-top: 9px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.profile-cell.disabled {
+  opacity: 0.4;
+}
+
+.primary-btn {
+  margin-top: 22px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 32px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.primary-btn:disabled {
+  opacity: 0.4;
+}
+
+.ghost-btn {
+  display: block;
+  margin: 12px auto 0;
+  background: transparent;
+  color: #9ca3af;
+  border: none;
+  font-size: 15px;
+}
+
+.summary-list {
+  margin-top: 4px;
+}
+
+.summary-row {
+  display: flex;
+  align-items: center;
+  background: #161616;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin: 8px auto;
+  max-width: 520px;
+}
+
+.summary-place {
+  width: 56px;
+  text-align: left;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.summary-name {
+  flex: 1;
+  text-align: left;
+  margin-left: 14px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.summary-moves {
+  display: flex;
+}
+
+.move-btn {
+  width: 44px;
+  height: 44px;
+  margin-left: 6px;
+  border: none;
+  border-radius: 10px;
+  background: #262626;
+  color: #fff;
+  font-size: 16px;
+}
+
+.move-btn:disabled {
+  opacity: 0.3;
+}
+
+/* ---- place badge on an eliminated tile ---- */
+.place-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 40px;
+  font-weight: 800;
+  padding: 6px 20px;
+  border-radius: 12px;
+}
+
+/* ---- death confirm modal ---- */
+.death-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.death-modal {
+  background: #161616;
+  border: 1px solid #333;
+  border-radius: 16px;
+  padding: 22px 24px;
+  text-align: center;
+  min-width: 280px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+
+.death-title {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.death-sub {
+  opacity: 0.75;
+  margin-top: 6px;
+  font-size: 15px;
+}
+
+.death-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.death-no {
+  background: #262626;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 22px;
+  margin: 0 8px;
+  font-size: 16px;
+}
+
+.death-yes {
+  background: #b91c1c;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 22px;
+  margin: 0 8px;
+  font-size: 16px;
+  font-weight: 700;
 }

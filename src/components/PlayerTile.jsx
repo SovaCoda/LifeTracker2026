@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
-import { POISON_LETHAL, CMDR_LETHAL } from '../state.js';
+import { POISON_LETHAL, CMDR_LETHAL, ordinal } from '../state.js';
 
 // How long the running "+N / -N" change indicator stays before fading out.
 var DELTA_TIMEOUT = 2500;
@@ -11,16 +11,14 @@ export function PlayerTile(props) {
   var player = props.player;
   var opponents = props.opponents;
   var rotation = props.rotation;
+  var place = props.place; // null = still in; otherwise final placement
   var onAdjust = props.onAdjust; // (id, amount)
-  var onRename = props.onRename; // (id, name)
   var onCounter = props.onCounter; // (id, kind, amount, oppId)
 
   var [delta, setDelta] = useState(0);
   var [showDelta, setShowDelta] = useState(false);
-  var [editing, setEditing] = useState(false);
   var [open, setOpen] = useState(null); // open counter stepper: { kind, oppId, name, color }
 
-  // refs keep press-and-hold timers and the running total stable across renders
   var deltaValue = useRef(0);
   var deltaActive = useRef(false);
   var deltaTimer = useRef(null);
@@ -63,8 +61,6 @@ export function PlayerTile(props) {
   }, []);
 
   // iOS 12 Safari has no Pointer Events -> wire touch + mouse separately.
-  // preventDefault on touchstart suppresses the synthesized mouse/click so a
-  // single tap doesn't fire twice on the iPad.
   function press(amount) {
     return function (e) {
       if (e.type === 'touchstart') e.preventDefault();
@@ -90,34 +86,18 @@ export function PlayerTile(props) {
   }
 
   var poisonLethal = player.poison >= POISON_LETHAL;
-  var cmdrLethal = opponents.some(function (o) {
-    return (player.cmdrDmg[o.id] || 0) >= CMDR_LETHAL;
-  });
-  var dead = player.life <= 0 || poisonLethal || cmdrLethal;
+  var eliminated = place != null;
 
   var deltaText = delta > 0 ? '+' + delta : String(delta);
   var openValue = counterValue(open);
 
   return (
     <div
-      class={'tile' + (dead ? ' dead' : '')}
+      class={'tile' + (eliminated ? ' dead' : '')}
       style={{ transform: 'rotate(' + rotation + 'deg)', background: player.color }}
     >
       <div class="tile-top">
-        {editing ? (
-          <input
-            class="name-input"
-            value={player.name}
-            autofocus
-            onInput={function (e) { onRename(player.id, e.target.value); }}
-            onBlur={function () { setEditing(false); }}
-            onKeyDown={function (e) { if (e.key === 'Enter') setEditing(false); }}
-          />
-        ) : (
-          <button class="name" onClick={function () { setEditing(true); }}>
-            {player.name}
-          </button>
-        )}
+        <div class="name">{player.name}</div>
       </div>
 
       <div class="tile-mid">
@@ -187,6 +167,8 @@ export function PlayerTile(props) {
           })}
         </div>
       </div>
+
+      {eliminated && <div class="place-badge">{ordinal(place)}</div>}
 
       {open && (
         <div class="stepper-backdrop" onClick={function () { setOpen(null); }}>
