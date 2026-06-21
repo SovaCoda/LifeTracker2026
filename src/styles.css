@@ -517,6 +517,28 @@ body {
   opacity: 0.4;
 }
 
+.avatar-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.cam-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid #0f0f0f;
+  background: #262626;
+  color: #fff;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .primary-btn {
   margin-top: 22px;
   background: #2563eb;
@@ -588,6 +610,72 @@ body {
 
 .move-btn:disabled {
   opacity: 0.3;
+}
+
+/* ---- stats table ---- */
+.stats-list {
+  max-width: 580px;
+  margin: 0 auto;
+}
+
+.stats-head,
+.stats-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 14px;
+}
+
+.stats-head {
+  opacity: 0.55;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.stats-row {
+  background: #161616;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+
+.stats-name {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  text-align: left;
+}
+
+.stats-pname {
+  margin-left: 10px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.stats-cell {
+  width: 62px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.confirm-row {
+  margin-top: 16px;
+  font-size: 15px;
+  opacity: 0.9;
+}
+
+.link {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-size: 15px;
+  font-weight: 600;
+  margin-left: 12px;
+}
+
+.link.danger {
+  color: #f87171;
 }
 
 /* ---- place badge on an eliminated tile ---- */

@@ -58,6 +58,12 @@ export function Board(props) {
           <div class="menu">
             <button
               class="menu-item"
+              onClick={function () { setMenuOpen(false); props.onShowStats(); }}
+            >
+              Stats
+            </button>
+            <button
+              class="menu-item"
               onClick={function () { setMenuOpen(false); props.onResetLife(); }}
             >
               Reset life

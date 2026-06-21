@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
 import {
-  loadSession, saveSession, loadProfiles, saveGameResult,
+  loadSession, saveSession, loadProfiles, saveProfiles, saveGameResult,
   createGameFromSeats, isPlayerDead, STARTING_LIFE
 } from './state.js';
 import { SetupCount } from './screens/SetupCount.jsx';
 import { SetupPlayers } from './screens/SetupPlayers.jsx';
 import { Summary } from './screens/Summary.jsx';
+import { Stats } from './screens/Stats.jsx';
 import { Board } from './components/Board.jsx';
 
 export function App() {
@@ -14,13 +15,26 @@ export function App() {
   var [playerCount, setPlayerCount] = useState(initial.playerCount || 4);
   var [game, setGame] = useState(initial.game);
   var [pendingDeath, setPendingDeath] = useState(null);
-  var [profiles] = useState(loadProfiles);
+  var [statsReturn, setStatsReturn] = useState('setup-count');
+  var [profiles, setProfiles] = useState(loadProfiles);
   var dismissed = useRef({}); // seat ids whose death prompt was waved off (until they recover)
 
-  // persist the whole flow so a reload resumes exactly where we were
+  function setProfileAvatar(id, dataUrl) {
+    setProfiles(function (prev) {
+      var next = prev.map(function (p) {
+        return p.id === id ? Object.assign({}, p, { avatar: dataUrl }) : p;
+      });
+      saveProfiles(next);
+      return next;
+    });
+  }
+
+  // persist the whole flow so a reload resumes exactly where we were.
+  // 'stats' is an overlay screen -> persist the screen underneath it instead.
   useEffect(function () {
-    saveSession({ phase: phase, playerCount: playerCount, game: game });
-  }, [phase, playerCount, game]);
+    var persistPhase = phase === 'stats' ? statsReturn : phase;
+    saveSession({ phase: persistPhase, playerCount: playerCount, game: game });
+  }, [phase, statsReturn, playerCount, game]);
 
   // ---- in-game life / counter edits ----
   var adjustLife = useCallback(function (id, amount) {
@@ -105,6 +119,8 @@ export function App() {
   function pickCount(n) { setPlayerCount(n); setPhase('setup-players'); }
   function startGame(seats) { setGame(createGameFromSeats(seats)); setPhase('playing'); }
   function backToCount() { setPhase('setup-count'); }
+  function showStats() { setStatsReturn(phase); setPhase('stats'); }
+  function closeStats() { setPhase(statsReturn); }
 
   function resetLife() {
     setGame(function (g) {
@@ -141,11 +157,23 @@ export function App() {
   }
 
   // ---- render by phase ----
+  if (phase === 'stats') {
+    return <Stats profiles={profiles} onClose={closeStats} />;
+  }
   if (phase === 'setup-count') {
     return <SetupCount onPick={pickCount} />;
   }
   if (phase === 'setup-players') {
-    return <SetupPlayers playerCount={playerCount} profiles={profiles} onBack={backToCount} onStart={startGame} />;
+    return (
+      <SetupPlayers
+        playerCount={playerCount}
+        profiles={profiles}
+        onBack={backToCount}
+        onStart={startGame}
+        onShowStats={showStats}
+        onSetAvatar={setProfileAvatar}
+      />
+    );
   }
   if (phase === 'summary' && game) {
     return <Summary game={game} profiles={profiles} onFinish={finishGame} />;
@@ -158,6 +186,7 @@ export function App() {
         onCounter={adjustCounter}
         onResetLife={resetLife}
         onNewGame={abandonGame}
+        onShowStats={showStats}
         pendingDeath={pendingDeath}
         onConfirmDeath={confirmDeath}
         onDismissDeath={dismissDeath}
