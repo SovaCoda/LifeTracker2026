@@ -1,5 +1,7 @@
-/* Safari-12 note: no `gap` in flexbox (unsupported until Safari 14.1).
-   Spacing here uses margins/padding instead. */
+/* Safari-12 notes:
+   - no flexbox `gap` (unsupported until 14.1) -> margins/padding instead
+   - no clamp() (13.1) -> min()/max() only (both fine since 11.1)
+   - --app-height (set from JS) avoids the iOS standalone bottom black bar */
 
 * {
   margin: 0;
@@ -12,12 +14,14 @@ html,
 body,
 #app {
   width: 100%;
-  height: 100%;
+  height: var(--app-height, 100%);
 }
 
 html,
 body {
   position: fixed;
+  top: 0;
+  left: 0;
   overflow: hidden;
   background: #0f0f0f;
   color: #fff;
@@ -39,25 +43,28 @@ body {
   border: 1px solid #0f0f0f;
 }
 
+/* ---- tile: name (top) / life (middle, grows) / counters (bottom) ---- */
 .tile {
   width: 100%;
   height: 100%;
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
 }
 
-/* ---- name ---- */
+.tile.dead {
+  opacity: 0.5;
+}
+
+.tile.dead .life {
+  text-decoration: line-through;
+}
+
 .tile-top {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  flex: 0 0 auto;
   display: flex;
   justify-content: center;
-  padding-top: 10px;
+  padding: 6px 6px 0;
 }
 
 .name {
@@ -65,23 +72,27 @@ body {
   color: #fff;
   border: none;
   border-radius: 8px;
-  padding: 6px 16px;
-  font-size: 20px;
+  padding: 5px 14px;
+  font-size: 18px;
   font-weight: 600;
+  max-width: 80vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .name-input {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
-  padding: 6px 12px;
+  padding: 5px 12px;
   border: none;
   border-radius: 8px;
   text-align: center;
   max-width: 70vw;
 }
 
-/* ---- life + controls ---- */
 .tile-mid {
+  flex: 1 1 auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -90,15 +101,16 @@ body {
 
 .adjust {
   flex: 0 0 auto;
-  width: 26%;
-  max-width: 150px;
-  height: 140px;
-  margin: 0 4%;
+  width: 22%;
+  max-width: 130px;
+  height: min(130px, 15vh);
+  min-height: 66px;
+  margin: 0 3%;
   border: none;
   border-radius: 16px;
   color: #fff;
   background: rgba(0, 0, 0, 0.26);
-  font-size: 60px;
+  font-size: min(54px, 7vh);
   font-weight: 700;
   line-height: 1;
 }
@@ -117,7 +129,7 @@ body {
 }
 
 .life {
-  font-size: 104px;
+  font-size: min(96px, 13vh);
   font-weight: 800;
   line-height: 1;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
@@ -125,8 +137,8 @@ body {
 
 .delta {
   position: absolute;
-  top: -40px;
-  font-size: 30px;
+  top: -34px;
+  font-size: 26px;
   font-weight: 700;
   background: rgba(0, 0, 0, 0.5);
   border-radius: 999px;
@@ -139,6 +151,127 @@ body {
 .delta.show {
   opacity: 1;
   transition: opacity 0.1s ease;
+}
+
+/* ---- counter strip ---- */
+.counters {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px 6px;
+}
+
+.counter {
+  display: inline-flex;
+  align-items: center;
+  margin: 3px;
+  padding: 4px 9px;
+  min-height: 30px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.32);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.counter.dim {
+  opacity: 0.5;
+}
+
+.counter.lethal {
+  background: #b91c1c;
+  opacity: 1;
+}
+
+.counter .ico {
+  margin-right: 5px;
+  font-size: 14px;
+}
+
+.counter .swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 6px;
+  display: inline-block;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+/* ---- counter stepper (centred on the tile, rotates with it) ---- */
+.stepper-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.stepper {
+  background: #161616;
+  border: 1px solid #333;
+  border-radius: 16px;
+  padding: 16px 18px;
+  text-align: center;
+  min-width: 220px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+
+.stepper-label {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.stepper-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sbtn {
+  width: 64px;
+  height: 64px;
+  margin: 0 12px;
+  border: none;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 34px;
+  font-weight: 700;
+}
+
+.sbtn:active {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.stepper-val {
+  font-size: 44px;
+  font-weight: 800;
+  min-width: 72px;
+}
+
+.stepper-val.lethal {
+  color: #f87171;
+}
+
+.stepper-close {
+  margin-top: 16px;
+  background: #262626;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 22px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 /* ---- center hub + menu ---- */
@@ -154,8 +287,8 @@ body {
 }
 
 .center-btn {
-  width: 58px;
-  height: 58px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: #1c1c1c;
   color: #fff;
@@ -179,11 +312,7 @@ body {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   opacity: 0.55;
-  margin: 10px 2px 6px;
-}
-
-.menu-title:first-child {
-  margin-top: 0;
+  margin: 0 2px 6px;
 }
 
 .menu-row {
@@ -214,29 +343,19 @@ body {
   background: #2563eb;
 }
 
-.menu-col {
-  display: flex;
-  flex-direction: column;
-}
-
 .menu-item {
-  text-align: left;
+  display: block;
+  width: 100%;
+  text-align: center;
   padding: 11px 12px;
-  margin-top: 6px;
-  background: #262626;
-  color: #fff;
   border: none;
   border-radius: 8px;
   font-size: 15px;
-}
-
-.menu-item.active {
-  background: #176c3a;
+  font-weight: 600;
+  color: #fff;
 }
 
 .menu-item.reset {
   margin-top: 12px;
   background: #7f1d1d;
-  text-align: center;
-  font-weight: 600;
 }

@@ -1,40 +1,55 @@
 // Game state model + localStorage persistence.
-// Kept dependency-free so the data shape is the single source of truth that the
-// whole UI renders from (this is the "data-driven" core that makes new features
-// cheap to add).
+// The data shape here is the single source of truth the whole UI renders from.
 
 var STORAGE_KEY = 'lifetracker.game.v1';
 
-export var FORMATS = [
-  { id: 'commander', name: 'Commander', life: 40 },
-  { id: 'brawl', name: 'Brawl', life: 30 },
-  { id: 'twohg', name: 'Two-Headed Giant', life: 30 },
-  { id: 'oathbreaker', name: 'Oathbreaker', life: 20 },
-  { id: 'standard', name: 'Standard / 60-card', life: 20 }
-];
+// Commander only: everyone starts at 40.
+export var STARTING_LIFE = 40;
+export var POISON_LETHAL = 10;
+export var CMDR_LETHAL = 21;
 
 // Default seat colours, reused across player counts.
 var PLAYER_COLORS = ['#9d2233', '#1e4fa3', '#176c3a', '#9a6311', '#5b2a8c', '#0f6f7a'];
 
-export function defaultPlayers(count, startingLife) {
+function colorFor(id) {
+  return PLAYER_COLORS[(id - 1) % PLAYER_COLORS.length];
+}
+
+function newPlayer(id) {
+  return {
+    id: id,
+    name: 'Player ' + id,
+    life: STARTING_LIFE,
+    color: colorFor(id),
+    poison: 0,
+    energy: 0,
+    cmdrDmg: {} // { opponentId: damageTaken }
+  };
+}
+
+export function defaultPlayers(count) {
   var players = [];
   for (var i = 0; i < count; i++) {
-    players.push({
-      id: i + 1,
-      name: 'Player ' + (i + 1),
-      life: startingLife,
-      color: PLAYER_COLORS[i % PLAYER_COLORS.length]
-    });
+    players.push(newPlayer(i + 1));
   }
   return players;
 }
 
-export function createGame(count, startingLife) {
+export function createGame(count) {
+  return { playerCount: count, players: defaultPlayers(count) };
+}
+
+// Fill in any fields a stored (older) player object might be missing.
+function normalizePlayer(p, index) {
+  var id = p && p.id ? p.id : index + 1;
   return {
-    formatId: 'commander',
-    startingLife: startingLife,
-    playerCount: count,
-    players: defaultPlayers(count, startingLife)
+    id: id,
+    name: p && p.name ? p.name : 'Player ' + id,
+    life: p && typeof p.life === 'number' ? p.life : STARTING_LIFE,
+    color: p && p.color ? p.color : colorFor(id),
+    poison: p && p.poison ? p.poison : 0,
+    energy: p && p.energy ? p.energy : 0,
+    cmdrDmg: p && p.cmdrDmg ? p.cmdrDmg : {}
   };
 }
 
@@ -44,19 +59,20 @@ export function loadGame() {
     if (raw) {
       var parsed = JSON.parse(raw);
       if (parsed && parsed.players && parsed.players.length) {
-        return parsed;
+        var players = parsed.players.map(normalizePlayer);
+        return { playerCount: players.length, players: players };
       }
     }
   } catch (e) {
-    /* corrupt or unavailable storage -> fall back to a fresh game */
+    /* corrupt or unavailable storage -> fresh game */
   }
-  return createGame(4, 40);
+  return createGame(4);
 }
 
 export function saveGame(game) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(game));
   } catch (e) {
-    /* private mode / quota -> ignore, app still works for the session */
+    /* private mode / quota -> ignore */
   }
 }

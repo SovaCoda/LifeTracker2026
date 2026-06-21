@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'preact/hooks';
-import { loadGame, saveGame, defaultPlayers, FORMATS } from './state.js';
+import { loadGame, saveGame, defaultPlayers, STARTING_LIFE } from './state.js';
 import { LAYOUTS } from './layouts.js';
 import { PlayerTile } from './components/PlayerTile.jsx';
 
@@ -30,44 +30,53 @@ export function App() {
     });
   }, []);
 
+  // kind: 'poison' | 'energy' | 'cmdr'. For 'cmdr', oppId is the attacker.
+  var adjustCounter = useCallback(function (id, kind, amount, oppId) {
+    setGame(function (g) {
+      return Object.assign({}, g, {
+        players: g.players.map(function (p) {
+          if (p.id !== id) return p;
+          if (kind === 'poison') {
+            return Object.assign({}, p, { poison: Math.max(0, p.poison + amount) });
+          }
+          if (kind === 'energy') {
+            return Object.assign({}, p, { energy: Math.max(0, p.energy + amount) });
+          }
+          // commander damage: clamp at 0, and mirror the real change onto life
+          // (commander damage IS combat damage, so it costs life too).
+          var cur = p.cmdrDmg[oppId] || 0;
+          var next = Math.max(0, cur + amount);
+          var applied = next - cur;
+          var cmdrDmg = Object.assign({}, p.cmdrDmg);
+          cmdrDmg[oppId] = next;
+          return Object.assign({}, p, { cmdrDmg: cmdrDmg, life: p.life - applied });
+        })
+      });
+    });
+  }, []);
+
   function setPlayerCount(count) {
     setGame(function (g) {
-      // keep existing players' names/colors/life where they exist; add fresh seats otherwise
-      var fresh = defaultPlayers(count, g.startingLife);
+      // keep existing seats; add fresh ones for any new seats
+      var fresh = defaultPlayers(count);
       var players = fresh.map(function (p, i) {
         var existing = g.players[i];
-        if (existing) {
-          return Object.assign({}, p, {
-            name: existing.name,
-            color: existing.color,
-            life: existing.life
-          });
-        }
-        return p;
+        return existing ? existing : p;
       });
       return Object.assign({}, g, { playerCount: count, players: players });
     });
   }
 
-  function setFormat(formatId) {
-    var fmt = FORMATS.filter(function (f) { return f.id === formatId; })[0];
-    setGame(function (g) {
-      return Object.assign({}, g, {
-        formatId: formatId,
-        startingLife: fmt.life,
-        players: g.players.map(function (p) {
-          return Object.assign({}, p, { life: fmt.life });
-        })
-      });
-    });
-    setMenuOpen(false);
-  }
-
-  function resetLife() {
+  function resetGame() {
     setGame(function (g) {
       return Object.assign({}, g, {
         players: g.players.map(function (p) {
-          return Object.assign({}, p, { life: g.startingLife });
+          return Object.assign({}, p, {
+            life: STARTING_LIFE,
+            poison: 0,
+            energy: 0,
+            cmdrDmg: {}
+          });
         })
       });
     });
@@ -88,13 +97,18 @@ export function App() {
     <div class="board" style={boardStyle}>
       {game.players.map(function (p, i) {
         var area = 'p' + (i + 1);
+        var opponents = game.players
+          .filter(function (o) { return o.id !== p.id; })
+          .map(function (o) { return { id: o.id, name: o.name, color: o.color }; });
         return (
           <div class="seat" key={p.id} style={{ gridArea: area }}>
             <PlayerTile
               player={p}
+              opponents={opponents}
               rotation={layout.rotations[area]}
               onAdjust={adjustLife}
               onRename={rename}
+              onCounter={adjustCounter}
             />
           </div>
         );
@@ -126,22 +140,7 @@ export function App() {
               })}
             </div>
 
-            <div class="menu-title">Format</div>
-            <div class="menu-col">
-              {FORMATS.map(function (f) {
-                return (
-                  <button
-                    key={f.id}
-                    class={'menu-item' + (game.formatId === f.id ? ' active' : '')}
-                    onClick={function () { setFormat(f.id); }}
-                  >
-                    {f.name} &middot; {f.life}
-                  </button>
-                );
-              })}
-            </div>
-
-            <button class="menu-item reset" onClick={resetLife}>Reset life</button>
+            <button class="menu-item reset" onClick={resetGame}>Reset game</button>
           </div>
         )}
       </div>

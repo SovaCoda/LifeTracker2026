@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
+import { POISON_LETHAL, CMDR_LETHAL } from '../state.js';
 
 // How long the running "+N / -N" change indicator stays before fading out.
 var DELTA_TIMEOUT = 2500;
@@ -8,16 +9,18 @@ var HOLD_RATE = 130;
 
 export function PlayerTile(props) {
   var player = props.player;
+  var opponents = props.opponents;
   var rotation = props.rotation;
   var onAdjust = props.onAdjust; // (id, amount)
   var onRename = props.onRename; // (id, name)
+  var onCounter = props.onCounter; // (id, kind, amount, oppId)
 
   var [delta, setDelta] = useState(0);
   var [showDelta, setShowDelta] = useState(false);
   var [editing, setEditing] = useState(false);
+  var [open, setOpen] = useState(null); // open counter stepper: { kind, oppId, name, color }
 
-  // refs so press-and-hold timers and the running total survive re-renders
-  // without stale-closure bugs.
+  // refs keep press-and-hold timers and the running total stable across renders
   var deltaValue = useRef(0);
   var deltaActive = useRef(false);
   var deltaTimer = useRef(null);
@@ -26,7 +29,6 @@ export function PlayerTile(props) {
 
   function bump(amount) {
     onAdjust(player.id, amount);
-
     if (!deltaActive.current) {
       deltaValue.current = 0;
       deltaActive.current = true;
@@ -34,7 +36,6 @@ export function PlayerTile(props) {
     deltaValue.current += amount;
     setDelta(deltaValue.current);
     setShowDelta(true);
-
     if (deltaTimer.current) clearTimeout(deltaTimer.current);
     deltaTimer.current = setTimeout(function () {
       setShowDelta(false);
@@ -45,24 +46,15 @@ export function PlayerTile(props) {
   function startHold(amount) {
     bump(amount);
     holdDelay.current = setTimeout(function () {
-      holdRepeat.current = setInterval(function () {
-        bump(amount);
-      }, HOLD_RATE);
+      holdRepeat.current = setInterval(function () { bump(amount); }, HOLD_RATE);
     }, HOLD_DELAY);
   }
 
   function endHold() {
-    if (holdDelay.current) {
-      clearTimeout(holdDelay.current);
-      holdDelay.current = null;
-    }
-    if (holdRepeat.current) {
-      clearInterval(holdRepeat.current);
-      holdRepeat.current = null;
-    }
+    if (holdDelay.current) { clearTimeout(holdDelay.current); holdDelay.current = null; }
+    if (holdRepeat.current) { clearInterval(holdRepeat.current); holdRepeat.current = null; }
   }
 
-  // clean up timers if the tile unmounts mid-press (e.g. player count changes)
   useEffect(function () {
     return function () {
       endHold();
@@ -70,9 +62,9 @@ export function PlayerTile(props) {
     };
   }, []);
 
-  // iOS 12 Safari has no Pointer Events, so we wire touch + mouse separately.
-  // preventDefault on touchstart suppresses the synthesized mouse/click events
-  // so a tap doesn't fire twice on the iPad.
+  // iOS 12 Safari has no Pointer Events -> wire touch + mouse separately.
+  // preventDefault on touchstart suppresses the synthesized mouse/click so a
+  // single tap doesn't fire twice on the iPad.
   function press(amount) {
     return function (e) {
       if (e.type === 'touchstart') e.preventDefault();
@@ -80,10 +72,37 @@ export function PlayerTile(props) {
     };
   }
 
+  // ---- counters ----
+  function counterValue(c) {
+    if (!c) return 0;
+    if (c.kind === 'poison') return player.poison;
+    if (c.kind === 'energy') return player.energy;
+    return player.cmdrDmg[c.oppId] || 0;
+  }
+  function isLethal(c, value) {
+    if (!c) return false;
+    if (c.kind === 'poison') return value >= POISON_LETHAL;
+    if (c.kind === 'cmdr') return value >= CMDR_LETHAL;
+    return false;
+  }
+  function step(amount) {
+    onCounter(player.id, open.kind, amount, open.oppId);
+  }
+
+  var poisonLethal = player.poison >= POISON_LETHAL;
+  var cmdrLethal = opponents.some(function (o) {
+    return (player.cmdrDmg[o.id] || 0) >= CMDR_LETHAL;
+  });
+  var dead = player.life <= 0 || poisonLethal || cmdrLethal;
+
   var deltaText = delta > 0 ? '+' + delta : String(delta);
+  var openValue = counterValue(open);
 
   return (
-    <div class="tile" style={{ transform: 'rotate(' + rotation + 'deg)', background: player.color }}>
+    <div
+      class={'tile' + (dead ? ' dead' : '')}
+      style={{ transform: 'rotate(' + rotation + 'deg)', background: player.color }}
+    >
       <div class="tile-top">
         {editing ? (
           <input
@@ -133,6 +152,54 @@ export function PlayerTile(props) {
           +
         </button>
       </div>
+
+      <div class="counters">
+        <button
+          class={'counter' + (poisonLethal ? ' lethal' : (player.poison ? '' : ' dim'))}
+          onClick={function () { setOpen({ kind: 'poison' }); }}
+        >
+          <span class="ico">&#9760;</span>{player.poison}
+        </button>
+
+        <button
+          class={'counter' + (player.energy ? '' : ' dim')}
+          onClick={function () { setOpen({ kind: 'energy' }); }}
+        >
+          <span class="ico">&#9889;</span>{player.energy}
+        </button>
+
+        {opponents.map(function (o) {
+          var dmg = player.cmdrDmg[o.id] || 0;
+          var lethal = dmg >= CMDR_LETHAL;
+          return (
+            <button
+              key={o.id}
+              class={'counter cmdr' + (lethal ? ' lethal' : (dmg ? '' : ' dim'))}
+              onClick={function () { setOpen({ kind: 'cmdr', oppId: o.id, name: o.name, color: o.color }); }}
+            >
+              <span class="swatch" style={{ background: o.color }}></span>{dmg}
+            </button>
+          );
+        })}
+      </div>
+
+      {open && (
+        <div class="stepper-backdrop" onClick={function () { setOpen(null); }}>
+          <div class="stepper" onClick={function (e) { e.stopPropagation(); }}>
+            <div class="stepper-label">
+              {open.kind === 'poison' ? 'Poison ☠' : null}
+              {open.kind === 'energy' ? 'Energy ⚡' : null}
+              {open.kind === 'cmdr' ? open.name + "'s commander" : null}
+            </div>
+            <div class="stepper-row">
+              <button class="sbtn" onClick={function () { step(-1); }}>&minus;</button>
+              <div class={'stepper-val' + (isLethal(open, openValue) ? ' lethal' : '')}>{openValue}</div>
+              <button class="sbtn" onClick={function () { step(1); }}>+</button>
+            </div>
+            <button class="stepper-close" onClick={function () { setOpen(null); }}>Done</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
