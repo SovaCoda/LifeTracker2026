@@ -7,6 +7,7 @@ import { SetupCount } from './screens/SetupCount.jsx';
 import { SetupPlayers } from './screens/SetupPlayers.jsx';
 import { Summary } from './screens/Summary.jsx';
 import { Stats } from './screens/Stats.jsx';
+import { History } from './screens/History.jsx';
 import { Board } from './components/Board.jsx';
 
 export function App() {
@@ -33,7 +34,8 @@ export function App() {
   // persist the whole flow so a reload resumes exactly where we were.
   // 'stats' is an overlay screen -> persist the screen underneath it instead.
   useEffect(function () {
-    var persistPhase = phase === 'stats' ? statsReturn : phase;
+    // 'stats' and 'history' are overlay screens -> persist what's underneath.
+    var persistPhase = (phase === 'stats' || phase === 'history') ? statsReturn : phase;
     saveSession({ phase: persistPhase, mode: mode, playerCount: playerCount, game: game });
   }, [phase, statsReturn, mode, playerCount, game]);
 
@@ -140,6 +142,8 @@ export function App() {
   }
   function showStats() { setStatsReturn(phase); setPhase('stats'); }
   function closeStats() { setPhase(statsReturn); }
+  function showHistory() { setPhase('history'); }   // reached from stats
+  function closeHistory() { setPhase('stats'); }
 
   function resetLife() {
     setGame(function (g) {
@@ -164,9 +168,11 @@ export function App() {
 
   function finishGame(ordered) {
     var result = {
+      id: 'g' + Date.now() + '_' + Math.floor(Math.random() * 1000),
       date: new Date().toISOString(),
+      mode: game ? game.mode : 'normal',
       results: ordered.map(function (p, i) {
-        return { profileId: p.profileId, name: p.name, place: i + 1 };
+        return { profileId: p.profileId, name: p.name, place: i + 1, role: p.role || null };
       })
     };
     saveGameResult(result);
@@ -177,7 +183,10 @@ export function App() {
 
   // ---- render by phase ----
   if (phase === 'stats') {
-    return <Stats profiles={profiles} onClose={closeStats} />;
+    return <Stats profiles={profiles} onClose={closeStats} onShowHistory={showHistory} />;
+  }
+  if (phase === 'history') {
+    return <History profiles={profiles} onClose={closeHistory} />;
   }
   if (phase === 'setup-count') {
     return <SetupCount mode={mode} onSetMode={setMode} onPick={pickCount} />;

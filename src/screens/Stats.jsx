@@ -52,6 +52,9 @@ export function Stats(props) {
           </div>
         )}
 
+        {anyGames && (
+          <button class="ghost-btn" onClick={props.onShowHistory}>View / edit games</button>
+        )}
         <button class="primary-btn" onClick={props.onClose}>Back</button>
 
         {anyGames && !confirmClear && (

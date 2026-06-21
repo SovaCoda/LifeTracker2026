@@ -781,6 +781,85 @@ body {
   opacity: 0.9;
 }
 
+/* ---- game history ---- */
+.history-list {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.history-card {
+  background: #161616;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+.history-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.history-date {
+  font-size: 13px;
+  opacity: 0.6;
+}
+
+.history-mode {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #262626;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.history-mode.outlaws {
+  background: #b8860b;
+}
+
+.history-row {
+  display: flex;
+  align-items: center;
+  padding: 3px 0;
+}
+
+.history-place {
+  width: 42px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.history-name {
+  flex: 1;
+  margin-left: 10px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.history-role {
+  font-size: 13px;
+  opacity: 0.7;
+  margin-left: 8px;
+}
+
+.history-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #242424;
+}
+
+.history-actions .link {
+  margin-left: 16px;
+}
+
 .link {
   background: transparent;
   border: none;

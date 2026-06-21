@@ -158,20 +158,36 @@ export function saveProfiles(list) {
 var GAMES_KEY = 'lifetracker.games.v1';
 
 export function loadGames() {
+  var games = [];
   try {
     var raw = localStorage.getItem(GAMES_KEY);
     if (raw) {
       var g = JSON.parse(raw);
-      if (g && g.length) return g;
+      if (g && g.length) games = g;
     }
   } catch (e) { /* ignore */ }
-  return [];
+
+  // Migrate older records so every game has a stable id and a mode.
+  var changed = false;
+  games.forEach(function (gm, i) {
+    if (!gm.id) { gm.id = 'g' + (gm.date || 'x') + '_' + i; changed = true; }
+    if (!gm.mode) { gm.mode = 'normal'; changed = true; }
+  });
+  if (changed) saveGames(games);
+
+  return games;
+}
+
+export function saveGames(list) {
+  try { localStorage.setItem(GAMES_KEY, JSON.stringify(list)); } catch (e) { /* ignore */ }
 }
 
 export function saveGameResult(result) {
+  if (!result.id) result.id = 'g' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+  if (!result.mode) result.mode = 'normal';
   var games = loadGames();
   games.push(result);
-  try { localStorage.setItem(GAMES_KEY, JSON.stringify(games)); } catch (e) { /* ignore */ }
+  saveGames(games);
   return games;
 }
 
