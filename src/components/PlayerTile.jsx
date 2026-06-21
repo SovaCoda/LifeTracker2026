@@ -1,5 +1,14 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
-import { POISON_LETHAL, CMDR_LETHAL, ordinal } from '../state.js';
+import { POISON_LETHAL, CMDR_LETHAL, DINO_GREEN, ordinal } from '../state.js';
+
+// Easter egg: random dinosaur roar.
+function playRoar() {
+  var n = 1 + Math.floor(Math.random() * 3);
+  try {
+    var audio = new Audio(import.meta.env.BASE_URL + 'audio/roar' + n + '.mp3');
+    audio.play().catch(function () { /* ignore autoplay blocks */ });
+  } catch (e) { /* ignore */ }
+}
 
 // How long the running "+N / -N" change indicator stays before fading out.
 var DELTA_TIMEOUT = 2500;
@@ -87,6 +96,7 @@ export function PlayerTile(props) {
 
   var poisonLethal = player.poison >= POISON_LETHAL;
   var eliminated = place != null;
+  var dinoEgg = player.profileId === 'houston' && player.color === DINO_GREEN;
 
   var deltaText = delta > 0 ? '+' + delta : String(delta);
   var openValue = counterValue(open);
@@ -98,6 +108,9 @@ export function PlayerTile(props) {
     >
       <div class="tile-top">
         <div class="name">{player.name}</div>
+        {dinoEgg && (
+          <button class="dino-btn" onClick={playRoar} aria-label="Roar">&#129430;</button>
+        )}
       </div>
 
       <div class="tile-mid">

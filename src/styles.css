@@ -88,6 +88,22 @@ body {
   white-space: nowrap;
 }
 
+.dino-btn {
+  margin-left: 8px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.dino-btn:active {
+  background: rgba(0, 0, 0, 0.45);
+}
+
 .name-input {
   font-size: 18px;
   font-weight: 600;

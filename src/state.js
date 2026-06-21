@@ -10,6 +10,9 @@ export var CMDR_LETHAL = 21;
 // Seat colours offered when choosing who's playing (one per player, up to 6).
 export var PLAYER_COLORS = ['#9d2233', '#1e4fa3', '#176c3a', '#9a6311', '#5b2a8c', '#0f6f7a'];
 
+// The green seat — used for the Houston dino easter egg.
+export var DINO_GREEN = PLAYER_COLORS[2];
+
 // ---- ordinals: 1 -> "1st", 4 -> "4th" ----
 export function ordinal(n) {
   var s = ['th', 'st', 'nd', 'rd'];

@@ -25,7 +25,7 @@ function fileToAvatar(file, cb) {
   img.src = url;
 }
 
-// Step 2: pick a colour, then tap a profile to seat them. Camera badge sets a photo.
+// Step 2: pick a color, then tap a profile to seat them. Camera badge sets a photo.
 export function SetupPlayers(props) {
   var playerCount = props.playerCount;
   var profiles = props.profiles;
@@ -87,7 +87,7 @@ export function SetupPlayers(props) {
     <div class="setup">
       <div class="setup-inner">
         <h1 class="setup-title">Who's playing?</h1>
-        <div class="subtitle">Pick a colour, then tap a player &middot; {seats.length} / {playerCount}</div>
+        <div class="subtitle">Pick a color, then tap a player &middot; {seats.length} / {playerCount}</div>
 
         <div class="color-row">
           {PLAYER_COLORS.map(function (c) {
