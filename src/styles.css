@@ -10,17 +10,19 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-html,
-body,
-#app {
+html {
   width: 100%;
-  height: var(--app-height, 100%);
+  height: 100%;
 }
 
-html,
+/* Anchor to all four edges of the fixed viewport. In a standalone PWA there's
+   no browser toolbar, so bottom:0 reaches the real bottom of the screen —
+   this is what removes the black bar (no 100vh / innerHeight guessing). */
 body {
   position: fixed;
   top: 0;
+  right: 0;
+  bottom: 0;
   left: 0;
   overflow: hidden;
   background: #0f0f0f;
@@ -30,6 +32,11 @@ body {
   -webkit-user-select: none;
   user-select: none;
   -webkit-text-size-adjust: 100%;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
 }
 
 .board {
@@ -153,27 +160,38 @@ body {
   transition: opacity 0.1s ease;
 }
 
-/* ---- counter strip ---- */
+/* ---- counter strip: poison/energy row stacked over the commander row ---- */
 .counters {
   flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 4px 16px; /* extra bottom padding lifts the strip off the edge */
+}
+
+.crow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  padding: 0 4px 6px;
 }
 
+.crow.utility {
+  margin-bottom: 8px;
+}
+
+/* poison + energy */
 .counter {
   display: inline-flex;
   align-items: center;
   margin: 3px;
-  padding: 4px 9px;
-  min-height: 30px;
+  padding: 7px 15px;
+  min-height: 40px;
   border: none;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.32);
   color: #fff;
-  font-size: 15px;
+  font-size: 19px;
   font-weight: 700;
   line-height: 1;
 }
@@ -188,17 +206,31 @@ body {
 }
 
 .counter .ico {
-  margin-right: 5px;
-  font-size: 14px;
+  margin-right: 6px;
+  font-size: 18px;
 }
 
-.counter .swatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  margin-right: 6px;
-  display: inline-block;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
+/* commander damage: number sits inside the opponent's color */
+.cmdr-pip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 66px;
+  height: 58px;
+  margin: 4px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.cmdr-pip.lethal {
+  box-shadow: 0 0 0 3px #ff3b30, inset 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
 /* ---- counter stepper (centred on the tile, rotates with it) ---- */

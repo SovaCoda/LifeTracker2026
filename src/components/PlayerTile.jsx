@@ -154,33 +154,38 @@ export function PlayerTile(props) {
       </div>
 
       <div class="counters">
-        <button
-          class={'counter' + (poisonLethal ? ' lethal' : (player.poison ? '' : ' dim'))}
-          onClick={function () { setOpen({ kind: 'poison' }); }}
-        >
-          <span class="ico">&#9760;</span>{player.poison}
-        </button>
+        <div class="crow utility">
+          <button
+            class={'counter' + (poisonLethal ? ' lethal' : (player.poison ? '' : ' dim'))}
+            onClick={function () { setOpen({ kind: 'poison' }); }}
+          >
+            <span class="ico">&#9760;</span>{player.poison}
+          </button>
 
-        <button
-          class={'counter' + (player.energy ? '' : ' dim')}
-          onClick={function () { setOpen({ kind: 'energy' }); }}
-        >
-          <span class="ico">&#9889;</span>{player.energy}
-        </button>
+          <button
+            class={'counter' + (player.energy ? '' : ' dim')}
+            onClick={function () { setOpen({ kind: 'energy' }); }}
+          >
+            <span class="ico">&#9889;</span>{player.energy}
+          </button>
+        </div>
 
-        {opponents.map(function (o) {
-          var dmg = player.cmdrDmg[o.id] || 0;
-          var lethal = dmg >= CMDR_LETHAL;
-          return (
-            <button
-              key={o.id}
-              class={'counter cmdr' + (lethal ? ' lethal' : (dmg ? '' : ' dim'))}
-              onClick={function () { setOpen({ kind: 'cmdr', oppId: o.id, name: o.name, color: o.color }); }}
-            >
-              <span class="swatch" style={{ background: o.color }}></span>{dmg}
-            </button>
-          );
-        })}
+        <div class="crow cmdr-row">
+          {opponents.map(function (o) {
+            var dmg = player.cmdrDmg[o.id] || 0;
+            var lethal = dmg >= CMDR_LETHAL;
+            return (
+              <button
+                key={o.id}
+                class={'cmdr-pip' + (lethal ? ' lethal' : '')}
+                style={{ background: o.color }}
+                onClick={function () { setOpen({ kind: 'cmdr', oppId: o.id, name: o.name, color: o.color }); }}
+              >
+                {dmg}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {open && (
