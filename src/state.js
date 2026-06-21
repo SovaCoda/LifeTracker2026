@@ -13,6 +13,15 @@ export var PLAYER_COLORS = ['#9d2233', '#1e4fa3', '#176c3a', '#9a6311', '#5b2a8c
 // The green seat — used for the Houston dino easter egg.
 export var DINO_GREEN = PLAYER_COLORS[2];
 
+// "Outlaws" hidden-role mode.
+export var SHERIFF_LIFE = 60;
+export var ROLES = {
+  sheriff: { name: 'Sheriff', goal: 'Survive and kill the Renegade and the Outlaws.', public: true },
+  deputy: { name: 'Deputy', goal: 'Protect the Sheriff. You win if the Sheriff survives, even if you die.' },
+  outlaw: { name: 'Outlaw', goal: "Kill the Sheriff. There's another Outlaw out there, but you don't know who." },
+  renegade: { name: 'Renegade', goal: 'Be the last one standing, kill everyone else (you get bonus points on the leaderboard if you kill mark first though).' }
+};
+
 // ---- ordinals: 1 -> "1st", 4 -> "4th" ----
 export function ordinal(n) {
   var s = ['th', 'st', 'nd', 'rd'];
@@ -32,20 +41,54 @@ export function isPlayerDead(p) {
 
 // ---- build the playing game from chosen seats ----
 // seats: [{ profileId, name, color }]
+function newSeatPlayer(s, i, role, life) {
+  return {
+    id: i + 1,
+    profileId: s.profileId,
+    name: s.name,
+    color: s.color,
+    life: life,
+    poison: 0,
+    energy: 0,
+    cmdrDmg: {}, // { opponentSeatId: damage }
+    place: null, // null = still in; otherwise final placement
+    role: role   // null in normal mode; a ROLES key in outlaws mode
+  };
+}
+
 export function createGameFromSeats(seats) {
   return {
+    mode: 'normal',
+    players: seats.map(function (s, i) { return newSeatPlayer(s, i, null, STARTING_LIFE); })
+  };
+}
+
+// Classic role distribution: Sheriff + Renegade + Outlaws (2, or 3 at 6p) + a
+// Deputy to fill the rest (5p and up).
+function rolesForCount(n) {
+  var roles = ['sheriff', 'renegade'];
+  var outlaws = n >= 6 ? 3 : 2;
+  for (var i = 0; i < outlaws; i++) roles.push('outlaw');
+  while (roles.length < n) roles.push('deputy');
+  return roles.slice(0, n);
+}
+
+function shuffle(arr) {
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
+export function createOutlawsGame(seats) {
+  var roles = shuffle(rolesForCount(seats.length));
+  return {
+    mode: 'outlaws',
     players: seats.map(function (s, i) {
-      return {
-        id: i + 1,
-        profileId: s.profileId,
-        name: s.name,
-        color: s.color,
-        life: STARTING_LIFE,
-        poison: 0,
-        energy: 0,
-        cmdrDmg: {}, // { opponentSeatId: damage }
-        place: null  // null = still in; otherwise final placement
-      };
+      var role = roles[i];
+      return newSeatPlayer(s, i, role, role === 'sheriff' ? SHERIFF_LIFE : STARTING_LIFE);
     })
   };
 }
@@ -61,7 +104,7 @@ export function loadSession() {
       if (s && s.phase) return s;
     }
   } catch (e) { /* ignore */ }
-  return { phase: 'setup-count', playerCount: 4, game: null };
+  return { phase: 'setup-count', mode: 'normal', playerCount: 4, game: null };
 }
 
 export function saveSession(s) {

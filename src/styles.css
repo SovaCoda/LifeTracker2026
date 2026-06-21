@@ -88,6 +88,78 @@ body {
   white-space: nowrap;
 }
 
+.role-badge {
+  margin-left: 8px;
+  padding: 5px 13px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.role-badge.sheriff {
+  background: #b8860b;
+}
+
+.role-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.role-card {
+  text-align: center;
+  padding: 18px 22px;
+}
+
+.role-eyebrow {
+  font-size: 13px;
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.role-name {
+  font-size: 36px;
+  font-weight: 800;
+  margin: 6px 0 12px;
+}
+
+.role-goal {
+  font-size: 17px;
+  line-height: 1.4;
+  max-width: 90%;
+  margin: 0 auto 18px;
+  opacity: 0.9;
+}
+
+.role-hide {
+  background: #262626;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 26px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.summary-role {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
 .dino-btn {
   margin-left: 8px;
   width: 38px;
@@ -459,6 +531,34 @@ body {
   opacity: 0.7;
   font-size: 16px;
   margin-bottom: 22px;
+}
+
+.mode-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.mode-btn {
+  padding: 10px 24px;
+  margin: 0 6px;
+  border: none;
+  border-radius: 10px;
+  background: #262626;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.mode-btn.active {
+  background: #2563eb;
+}
+
+.count-label {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 12px 0 14px;
+  opacity: 0.85;
 }
 
 .count-grid {

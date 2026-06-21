@@ -69,6 +69,12 @@ export function Board(props) {
               Reset life
             </button>
             <button
+              class="menu-item"
+              onClick={function () { setMenuOpen(false); props.onEndGame(); }}
+            >
+              End game
+            </button>
+            <button
               class="menu-item danger"
               onClick={function () { setMenuOpen(false); props.onNewGame(); }}
             >

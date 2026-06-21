@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks';
-import { ordinal } from '../state.js';
+import { ordinal, ROLES } from '../state.js';
 import { Avatar } from '../components/Avatar.jsx';
 
 // End-of-game results. Rows start in the auto-tracked order; ▲/▼ let you fix
@@ -37,7 +37,10 @@ export function Summary(props) {
               <div class="summary-row" key={p.id}>
                 <div class="summary-place">{ordinal(i + 1)}</div>
                 <Avatar profile={profileFor(p)} size={46} ring={p.color} />
-                <div class="summary-name">{p.name}</div>
+                <div class="summary-name">
+                  {p.name}
+                  {p.role && <span class="summary-role">{ROLES[p.role].name}</span>}
+                </div>
                 <div class="summary-moves">
                   <button class="move-btn" disabled={i === 0} onClick={function () { move(i, -1); }}>&#9650;</button>
                   <button class="move-btn" disabled={i === order.length - 1} onClick={function () { move(i, 1); }}>&#9660;</button>

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
-import { POISON_LETHAL, CMDR_LETHAL, DINO_GREEN, ordinal } from '../state.js';
+import { POISON_LETHAL, CMDR_LETHAL, DINO_GREEN, ROLES, ordinal } from '../state.js';
 
 // Easter egg: random dinosaur roar.
 function playRoar() {
@@ -27,6 +27,7 @@ export function PlayerTile(props) {
   var [delta, setDelta] = useState(0);
   var [showDelta, setShowDelta] = useState(false);
   var [open, setOpen] = useState(null); // open counter stepper: { kind, oppId, name, color }
+  var [roleOpen, setRoleOpen] = useState(false);
 
   var deltaValue = useRef(0);
   var deltaActive = useRef(false);
@@ -97,6 +98,7 @@ export function PlayerTile(props) {
   var poisonLethal = player.poison >= POISON_LETHAL;
   var eliminated = place != null;
   var dinoEgg = player.profileId === 'houston' && player.color === DINO_GREEN;
+  var roleInfo = player.role ? ROLES[player.role] : null;
 
   var deltaText = delta > 0 ? '+' + delta : String(delta);
   var openValue = counterValue(open);
@@ -108,6 +110,14 @@ export function PlayerTile(props) {
     >
       <div class="tile-top">
         <div class="name">{player.name}</div>
+        {roleInfo && roleInfo.public && (
+          <button class="role-badge sheriff" onClick={function () { setRoleOpen(true); }}>
+            &#9733; Sheriff
+          </button>
+        )}
+        {roleInfo && !roleInfo.public && (
+          <button class="role-badge" onClick={function () { setRoleOpen(true); }}>Role</button>
+        )}
         {dinoEgg && (
           <button class="dino-btn" onClick={playRoar} aria-label="Roar">&#129430;</button>
         )}
@@ -182,6 +192,17 @@ export function PlayerTile(props) {
       </div>
 
       {eliminated && <div class="place-badge">{ordinal(place)}</div>}
+
+      {roleOpen && roleInfo && (
+        <div class="role-backdrop" onClick={function () { setRoleOpen(false); }}>
+          <div class="role-card" onClick={function (e) { e.stopPropagation(); }}>
+            <div class="role-eyebrow">You are</div>
+            <div class="role-name">{roleInfo.name}</div>
+            <div class="role-goal">{roleInfo.goal}</div>
+            <button class="role-hide" onClick={function () { setRoleOpen(false); }}>Hide</button>
+          </div>
+        </div>
+      )}
 
       {open && (
         <div class="stepper-backdrop" onClick={function () { setOpen(null); }}>

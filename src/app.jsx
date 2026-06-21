@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
 import {
   loadSession, saveSession, loadProfiles, saveProfiles, saveGameResult,
-  createGameFromSeats, isPlayerDead, STARTING_LIFE
+  createGameFromSeats, createOutlawsGame, isPlayerDead, STARTING_LIFE
 } from './state.js';
 import { SetupCount } from './screens/SetupCount.jsx';
 import { SetupPlayers } from './screens/SetupPlayers.jsx';
@@ -12,6 +12,7 @@ import { Board } from './components/Board.jsx';
 export function App() {
   var initial = loadSession();
   var [phase, setPhase] = useState(initial.phase);
+  var [mode, setMode] = useState(initial.mode || 'normal');
   var [playerCount, setPlayerCount] = useState(initial.playerCount || 4);
   var [game, setGame] = useState(initial.game);
   var [pendingDeath, setPendingDeath] = useState(null);
@@ -33,8 +34,8 @@ export function App() {
   // 'stats' is an overlay screen -> persist the screen underneath it instead.
   useEffect(function () {
     var persistPhase = phase === 'stats' ? statsReturn : phase;
-    saveSession({ phase: persistPhase, playerCount: playerCount, game: game });
-  }, [phase, statsReturn, playerCount, game]);
+    saveSession({ phase: persistPhase, mode: mode, playerCount: playerCount, game: game });
+  }, [phase, statsReturn, mode, playerCount, game]);
 
   // ---- in-game life / counter edits ----
   var adjustLife = useCallback(function (id, amount) {
@@ -117,8 +118,26 @@ export function App() {
 
   // ---- flow transitions ----
   function pickCount(n) { setPlayerCount(n); setPhase('setup-players'); }
-  function startGame(seats) { setGame(createGameFromSeats(seats)); setPhase('playing'); }
+  function startGame(seats) {
+    setGame(mode === 'outlaws' ? createOutlawsGame(seats) : createGameFromSeats(seats));
+    setPhase('playing');
+  }
   function backToCount() { setPhase('setup-count'); }
+
+  // End early: give any survivors the top open places (no collision with the
+  // places the dead already took), then go to the summary to reveal/record.
+  function endGameNow() {
+    setGame(function (g) {
+      if (!g) return g;
+      var place = 1;
+      var players = g.players.map(function (p) {
+        return p.place == null ? Object.assign({}, p, { place: place++ }) : p;
+      });
+      return Object.assign({}, g, { players: players });
+    });
+    setPendingDeath(null);
+    setPhase('summary');
+  }
   function showStats() { setStatsReturn(phase); setPhase('stats'); }
   function closeStats() { setPhase(statsReturn); }
 
@@ -161,7 +180,7 @@ export function App() {
     return <Stats profiles={profiles} onClose={closeStats} />;
   }
   if (phase === 'setup-count') {
-    return <SetupCount onPick={pickCount} />;
+    return <SetupCount mode={mode} onSetMode={setMode} onPick={pickCount} />;
   }
   if (phase === 'setup-players') {
     return (
@@ -186,6 +205,7 @@ export function App() {
         onCounter={adjustCounter}
         onResetLife={resetLife}
         onNewGame={abandonGame}
+        onEndGame={endGameNow}
         onShowStats={showStats}
         pendingDeath={pendingDeath}
         onConfirmDeath={confirmDeath}
