@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { POISON_LETHAL, CMDR_LETHAL, DINO_GREEN, ROLES, ordinal } from '../state.js';
+import { DeathShatter } from './DeathShatter.jsx';
 
 // Easter egg: random dinosaur roar.
 function playRoar() {
@@ -28,6 +29,12 @@ export function PlayerTile(props) {
   var [showDelta, setShowDelta] = useState(false);
   var [open, setOpen] = useState(null); // open counter stepper: { kind, oppId, name, color }
   var [roleOpen, setRoleOpen] = useState(false);
+
+  // Death animation: 'none' (alive) | 'cracking' (face intact, cracks spreading)
+  // | 'revealed' (face gone, black + placement showing).
+  var [animPhase, setAnimPhase] = useState(place != null ? 'revealed' : 'none');
+  var [showCanvas, setShowCanvas] = useState(false);
+  var prevPlace = useRef(place);
 
   var deltaValue = useRef(0);
   var deltaActive = useRef(false);
@@ -70,6 +77,19 @@ export function PlayerTile(props) {
     };
   }, []);
 
+  // Fire the shatter the moment a player gets placed. If we mount already-placed
+  // (resumed game), skip straight to the revealed state with no animation.
+  useEffect(function () {
+    if (prevPlace.current == null && place != null) {
+      setAnimPhase('cracking');
+      setShowCanvas(true);
+    } else if (place == null && prevPlace.current != null) {
+      setAnimPhase('none');
+      setShowCanvas(false);
+    }
+    prevPlace.current = place;
+  }, [place]);
+
   // iOS 12 Safari has no Pointer Events -> wire touch + mouse separately.
   function press(amount) {
     return function (e) {
@@ -96,104 +116,120 @@ export function PlayerTile(props) {
   }
 
   var poisonLethal = player.poison >= POISON_LETHAL;
-  var eliminated = place != null;
   var dinoEgg = player.profileId === 'houston' && player.color === DINO_GREEN;
   var roleInfo = player.role ? ROLES[player.role] : null;
+  var revealed = animPhase === 'revealed';
+  var cracking = animPhase === 'cracking';
 
   var deltaText = delta > 0 ? '+' + delta : String(delta);
   var openValue = counterValue(open);
 
   return (
     <div
-      class={'tile' + (eliminated ? ' dead' : '')}
-      style={{ transform: 'rotate(' + rotation + 'deg)', background: player.color }}
+      class={'tile' + (revealed ? ' eliminated' : '') + (cracking ? ' dying' : '')}
+      style={{ transform: 'rotate(' + rotation + 'deg)', background: revealed ? '#0a0a0a' : player.color }}
     >
-      <div class="tile-top">
-        <div class="name">{player.name}</div>
-        {roleInfo && roleInfo.public && (
-          <button class="role-badge sheriff" onClick={function () { setRoleOpen(true); }}>
-            &#9733; Sheriff
-          </button>
-        )}
-        {roleInfo && !roleInfo.public && (
-          <button class="role-badge" onClick={function () { setRoleOpen(true); }}>Role</button>
-        )}
-        {dinoEgg && (
-          <button class="dino-btn" onClick={playRoar} aria-label="Roar">&#129430;</button>
-        )}
-      </div>
-
-      <div class="tile-mid">
-        <button
-          class="adjust minus"
-          onTouchStart={press(-1)}
-          onTouchEnd={endHold}
-          onTouchCancel={endHold}
-          onMouseDown={press(-1)}
-          onMouseUp={endHold}
-          onMouseLeave={endHold}
-          onContextMenu={function (e) { e.preventDefault(); }}
-        >
-          &minus;
-        </button>
-
-        <div class="life-wrap">
-          <div class="life">{player.life}</div>
-          <div class={'delta' + (showDelta ? ' show' : '')}>{deltaText}</div>
+      {!revealed && (
+        <div class="tile-top">
+          <div class="name">{player.name}</div>
+          {roleInfo && roleInfo.public && (
+            <button class="role-badge sheriff" onClick={function () { setRoleOpen(true); }}>
+              &#9733; Sheriff
+            </button>
+          )}
+          {roleInfo && !roleInfo.public && (
+            <button class="role-badge" onClick={function () { setRoleOpen(true); }}>Role</button>
+          )}
+          {dinoEgg && (
+            <button class="dino-btn" onClick={playRoar} aria-label="Roar">&#129430;</button>
+          )}
         </div>
+      )}
 
-        <button
-          class="adjust plus"
-          onTouchStart={press(1)}
-          onTouchEnd={endHold}
-          onTouchCancel={endHold}
-          onMouseDown={press(1)}
-          onMouseUp={endHold}
-          onMouseLeave={endHold}
-          onContextMenu={function (e) { e.preventDefault(); }}
-        >
-          +
-        </button>
-      </div>
-
-      <div class="counters">
-        <div class="crow utility">
+      {!revealed && (
+        <div class="tile-mid">
           <button
-            class={'counter' + (poisonLethal ? ' lethal' : (player.poison ? '' : ' dim'))}
-            onClick={function () { setOpen({ kind: 'poison' }); }}
+            class="adjust minus"
+            onTouchStart={press(-1)}
+            onTouchEnd={endHold}
+            onTouchCancel={endHold}
+            onMouseDown={press(-1)}
+            onMouseUp={endHold}
+            onMouseLeave={endHold}
+            onContextMenu={function (e) { e.preventDefault(); }}
           >
-            <span class="ico">&#9760;</span>{player.poison}
+            &minus;
           </button>
+
+          <div class="life-wrap">
+            <div class="life">{player.life}</div>
+            <div class={'delta' + (showDelta ? ' show' : '')}>{deltaText}</div>
+          </div>
 
           <button
-            class={'counter' + (player.energy ? '' : ' dim')}
-            onClick={function () { setOpen({ kind: 'energy' }); }}
+            class="adjust plus"
+            onTouchStart={press(1)}
+            onTouchEnd={endHold}
+            onTouchCancel={endHold}
+            onMouseDown={press(1)}
+            onMouseUp={endHold}
+            onMouseLeave={endHold}
+            onContextMenu={function (e) { e.preventDefault(); }}
           >
-            <span class="ico">&#9889;</span>{player.energy}
+            +
           </button>
         </div>
+      )}
 
-        <div class="crow cmdr-row">
-          {opponents.map(function (o) {
-            var dmg = player.cmdrDmg[o.id] || 0;
-            var lethal = dmg >= CMDR_LETHAL;
-            return (
-              <button
-                key={o.id}
-                class={'cmdr-pip' + (lethal ? ' lethal' : '')}
-                style={{ background: o.color }}
-                onClick={function () { setOpen({ kind: 'cmdr', oppId: o.id, name: o.name, color: o.color }); }}
-              >
-                {dmg}
-              </button>
-            );
-          })}
+      {!revealed && (
+        <div class="counters">
+          <div class="crow utility">
+            <button
+              class={'counter' + (poisonLethal ? ' lethal' : (player.poison ? '' : ' dim'))}
+              onClick={function () { setOpen({ kind: 'poison' }); }}
+            >
+              <span class="ico">&#9760;</span>{player.poison}
+            </button>
+
+            <button
+              class={'counter' + (player.energy ? '' : ' dim')}
+              onClick={function () { setOpen({ kind: 'energy' }); }}
+            >
+              <span class="ico">&#9889;</span>{player.energy}
+            </button>
+          </div>
+
+          <div class="crow cmdr-row">
+            {opponents.map(function (o) {
+              var dmg = player.cmdrDmg[o.id] || 0;
+              var lethal = dmg >= CMDR_LETHAL;
+              return (
+                <button
+                  key={o.id}
+                  class={'cmdr-pip' + (lethal ? ' lethal' : '')}
+                  style={{ background: o.color }}
+                  onClick={function () { setOpen({ kind: 'cmdr', oppId: o.id, name: o.name, color: o.color }); }}
+                >
+                  {dmg}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
-      {eliminated && <div class="place-badge">{ordinal(place)}</div>}
+      {revealed && <div class="place-badge">{ordinal(place)}</div>}
 
-      {roleOpen && roleInfo && (
+      {showCanvas && (
+        <DeathShatter
+          color={player.color}
+          rotation={rotation}
+          onShatter={function () { setAnimPhase('revealed'); }}
+          onDone={function () { setShowCanvas(false); }}
+        />
+      )}
+
+      {!revealed && roleOpen && roleInfo && (
         <div class="role-backdrop" onClick={function () { setRoleOpen(false); }}>
           <div class="role-card" onClick={function (e) { e.stopPropagation(); }}>
             <div class="role-eyebrow">You are</div>
@@ -204,7 +240,7 @@ export function PlayerTile(props) {
         </div>
       )}
 
-      {open && (
+      {!revealed && open && (
         <div class="stepper-backdrop" onClick={function () { setOpen(null); }}>
           <div class="stepper" onClick={function (e) { e.stopPropagation(); }}>
             <div class="stepper-label">
