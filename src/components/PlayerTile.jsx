@@ -224,6 +224,7 @@ export function PlayerTile(props) {
         <DeathShatter
           color={player.color}
           rotation={rotation}
+          variant={player.profileId === 'mark' ? 'bricks' : 'web'}
           onShatter={function () { setAnimPhase('revealed'); }}
           onDone={function () { setShowCanvas(false); }}
         />
